@@ -23,10 +23,16 @@ UIPopoverController *popupCtrl;
 
     NSDateComponents *comps = [[NSDateComponents alloc] init];
     NSCalendar *cal = [NSCalendar currentCalendar];
+    
+    picker.textColor = UIColor.blueColor;
+    picker.overTextColor = UIColor.cyanColor;
+
+    picker.locale = [[NSLocale alloc] initWithLocaleIdentifier:[NSLocale.preferredLanguages firstObject]];
+    picker.calendar = cal;
 
     // Set mode to month + year
     // This is optional; default is month + year
-    picker.datePickerMode = NTMonthYearPickerModeMonthAndYear;
+    picker.datePickerMode = NTMonthYearPickerModeYearAndMonth;
 
     // Set minimum date to January 2000
     // This is optional; default is no min date

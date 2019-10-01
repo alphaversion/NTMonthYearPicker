@@ -31,6 +31,8 @@
 @property (nonatomic, retain) NSDate *minimumDate;
 @property (nonatomic, retain) NSDate *maximumDate;
 @property (nonatomic,assign) id<NTMonthYearPickerViewDelegate> pickerDelegate;
+@property (nonatomic, retain) UIColor *textColor;
+@property (nonatomic, retain) UIColor *overTextColor;
 
 - (void)setDate:(NSDate *)date animated:(BOOL)animated;
 
@@ -56,6 +58,8 @@
 @synthesize minimumDate;
 @synthesize maximumDate;
 @synthesize pickerDelegate;
+@synthesize textColor;
+@synthesize overTextColor;
 
 // Default min/max year values used if minimumDate/maximumDate is not set
 // These values match that of UIDatePicker
@@ -81,6 +85,9 @@ const NSInteger kMaxYear = 10000;
 }
 
 - (void)initCommon {
+    self.textColor = UIColor.blackColor;
+    self.overTextColor = UIColor.grayColor;
+
     self.dataSource = self;
     self.delegate = self;
     self.showsSelectionIndicator = YES;
@@ -109,6 +116,8 @@ const NSInteger kMaxYear = 10000;
     _months = [dateFormatter monthSymbols];
 
     // Form list of years
+    dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"]];
     [dateFormatter setDateFormat:@"yyyy"];
     NSDateComponents *comps = [[NSDateComponents alloc] init];
 
@@ -150,6 +159,7 @@ const NSInteger kMaxYear = 10000;
 
 - (void)setLocale:(NSLocale *)loc {
     _locale = loc;
+    [self initPickerData];
 }
 
 #pragma mark - Calendar
@@ -163,6 +173,7 @@ const NSInteger kMaxYear = 10000;
 
 - (void)setCalendar:(NSCalendar *)cal {
     _calendar = cal;
+    [self initPickerData];
 }
 
 #pragma mark - Date
@@ -223,11 +234,18 @@ const NSInteger kMaxYear = 10000;
     NSInteger year = [comps year];
     
     // Select the corresponding rows in the UI
-    if( datePickerMode == NTMonthYearPickerModeYear ) {
-        [self selectRow:(year - kMinYear) inComponent:0 animated:animated];
-    } else {
-        [self selectRow:(month - 1) inComponent:0 animated:animated];
-        [self selectRow:(year - kMinYear) inComponent:1 animated:animated];
+    switch ( datePickerMode ) {
+        case NTMonthYearPickerModeYear:
+            [self selectRow:(year - kMinYear) inComponent:0 animated:animated];
+            break;
+        case NTMonthYearPickerModeMonthAndYear:
+            [self selectRow:(month - 1) inComponent:0 animated:animated];
+            [self selectRow:(year - kMinYear) inComponent:1 animated:animated];
+            break;
+        case NTMonthYearPickerModeYearAndMonth:
+            [self selectRow:(year - kMinYear) inComponent:0 animated:animated];
+            [self selectRow:(month - 1) inComponent:1 animated:animated];
+            break;
     }
 }
 
@@ -235,12 +253,19 @@ const NSInteger kMaxYear = 10000;
     NSInteger month, year;
 
     // Get the currently selected month and year
-    if( datePickerMode == NTMonthYearPickerModeYear ) {
-        month = 1;
-        year  = [self selectedRowInComponent:0] + kMinYear;
-    } else {
-        month = [self selectedRowInComponent:0] + 1;
-        year  = [self selectedRowInComponent:1] + kMinYear;
+    switch ( datePickerMode ) {
+        case NTMonthYearPickerModeYear:
+            month = 1;
+            year  = [self selectedRowInComponent:0] + kMinYear;
+            break;
+        case NTMonthYearPickerModeMonthAndYear:
+            month = [self selectedRowInComponent:0] + 1;
+            year  = [self selectedRowInComponent:1] + kMinYear;
+            break;
+        case NTMonthYearPickerModeYearAndMonth:
+            month = [self selectedRowInComponent:1] + 1;
+            year  = [self selectedRowInComponent:0] + kMinYear;
+            break;
     }
 
     // Assemble into a date object
@@ -260,7 +285,18 @@ const NSInteger kMaxYear = 10000;
 
 - (NSInteger)pickerView:(UIPickerView *)pickerView
 numberOfRowsInComponent:(NSInteger)component {
-    BOOL isYearComponent = (datePickerMode == NTMonthYearPickerModeYear) || (component == 1);
+    BOOL isYearComponent;
+    switch ( datePickerMode ) {
+        case NTMonthYearPickerModeYear:
+            isYearComponent = true;
+            break;
+        case NTMonthYearPickerModeMonthAndYear:
+            isYearComponent = (component == 1);
+            break;
+        case NTMonthYearPickerModeYearAndMonth:
+            isYearComponent = (component == 0);
+            break;
+    }
     return isYearComponent ? [_years count] : [_months count];
 }
 
@@ -281,7 +317,18 @@ numberOfRowsInComponent:(NSInteger)component {
     }
 
     // Is this the year component?
-    BOOL isYearComponent = (datePickerMode == NTMonthYearPickerModeYear) || (component == 1);
+    BOOL isYearComponent;
+    switch ( datePickerMode ) {
+        case NTMonthYearPickerModeYear:
+            isYearComponent = true;
+            break;
+        case NTMonthYearPickerModeMonthAndYear:
+            isYearComponent = (component == 1);
+            break;
+        case NTMonthYearPickerModeYearAndMonth:
+            isYearComponent = (component == 0);
+            break;
+    }
 
     // Is the month or year represented by this component out of bounds? (i.e. < min or > max)
     BOOL outOfBounds = FALSE;
@@ -307,7 +354,7 @@ numberOfRowsInComponent:(NSInteger)component {
 
     // Set label text & color
     label.text = [(isYearComponent ? _years : _months) objectAtIndex:row];
-    label.textColor = (outOfBounds ? [UIColor grayColor] : [UIColor blackColor]);
+    label.textColor = (outOfBounds ? self.overTextColor : self.textColor);
 
     return label;
 }
@@ -330,7 +377,18 @@ numberOfRowsInComponent:(NSInteger)component {
 
     // If the year was changed, reload the month picker
     // This is to refresh the enabled/disabled state of the months
-    BOOL isYearComponent = (datePickerMode == NTMonthYearPickerModeYear) || (component == 1);
+    BOOL isYearComponent;
+    switch ( datePickerMode ) {
+        case NTMonthYearPickerModeYear:
+            isYearComponent = true;
+            break;
+        case NTMonthYearPickerModeMonthAndYear:
+            isYearComponent = (component == 1);
+            break;
+        case NTMonthYearPickerModeYearAndMonth:
+            isYearComponent = (component == 0);
+            break;
+    }
     if( isYearComponent ) {
         [self reloadComponent:0];
     }
@@ -368,6 +426,8 @@ numberOfRowsInComponent:(NSInteger)component {
 @synthesize date;
 @synthesize minimumDate;
 @synthesize maximumDate;
+@dynamic textColor;
+@dynamic overTextColor;
 
 #pragma mark - Initialization
 
@@ -459,6 +519,22 @@ numberOfRowsInComponent:(NSInteger)component {
 
 - (void)setMaximumDate:(NSDate *)maxDate {
     _pickerView.maximumDate = maxDate;
+}
+
+- (UIColor *) textColor {
+    return _pickerView.textColor;
+}
+
+- (void)setTextColor:(UIColor *)textColor {
+    _pickerView.textColor = textColor;
+}
+
+- (UIColor *)overTextColor {
+    return _pickerView.overTextColor;
+}
+
+- (void)setOverTextColor:(UIColor *)overTextColor {
+    _pickerView.overTextColor = overTextColor;
 }
 
 @end

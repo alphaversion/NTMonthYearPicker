@@ -12,6 +12,7 @@
 
 typedef enum {
     NTMonthYearPickerModeMonthAndYear,  // Display month and year
+    NTMonthYearPickerModeYearAndMonth,  // Display year and month
     NTMonthYearPickerModeYear           // Display just the year
 } NTMonthYearPickerMode;
 
@@ -40,6 +41,9 @@ typedef enum {
 // The maximum date that the date picker should show
 // Default is nil (Dec 31, 10000 in the UI)
 @property (nonatomic, retain) NSDate *maximumDate;
+
+@property (nonatomic, retain) UIColor *textColor;
+@property (nonatomic, retain) UIColor *overTextColor;
 
 // Sets the date to display in the date picker
 // If animated is YES, animate the wheels to display the new date
